@@ -27,7 +27,6 @@
   </div>
 
 {% endblock %}
-
 {% block sidebar %}
   {{ sidebar_template.render(true) }}
 {% endblock %}
@@ -35,3 +34,4 @@
 {% block script_extra %}
   {% include '_scripts/pages/post-details.swig' %}
 {% endblock %}
+

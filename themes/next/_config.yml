@@ -92,13 +92,13 @@ index_with_subtitle: false
 # Value before `||` delimeter is the target link.
 # Value after `||` delimeter is the name of FontAwesome icon. If icon (with or without delimeter) is not specified, question icon will be loaded.
 menu:
-  home: / || home
+  home: /||home
   # about: /about
-  tags: /tags 
-  categories: /categories 
-  # archives: /archives/ || archive
-  #schedule: /schedule/ || calendar
-  #sitemap: /sitemap.xml || sitemap
+  tags: /tags||tags 
+  categories: /categories||th 
+  archives: /archives||archive
+  # schedule: /schedule||calendar
+  # sitemap: /sitemap.xml||sitemap
   #commonweal: /404/ || heartbeat
 
 # Enable/Disable menu icons.
@@ -126,9 +126,9 @@ scheme: Pisces
 # Key is the link label showing to end users.
 # Value before `||` delimeter is the target permalink.
 # Value after `||` delimeter is the name of FontAwesome icon. If icon (with or without delimeter) is not specified, globe icon will be loaded.
-#social:
-  #GitHub: https://github.com/yourname || github
-  #E-Mail: mailto:yourname@gmail.com || envelope
+social:
+  GitHub: https://github.com/fuyanzhang || github
+  E-Mail: mailto:fuyzh1024@gmail.com || envelope
   #Google: https://plus.google.com/yourname || google
   #Twitter: https://twitter.com/yourname || twitter
   #FB Page: https://www.facebook.com/yourname || facebook
@@ -395,7 +395,7 @@ valine:
 
 # Support for LiveRe comments system.
 # You can get your uid from https://livere.com/insight/myCode (General web site)
-#livere_uid: your uid
+livere_uid: MTAyMC81MTIyNC8yNzcwNQ==
 
 # Gitment
 # Introduction: https://imsun.net/posts/gitment-introduction/
