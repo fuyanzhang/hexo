@@ -96,7 +96,7 @@ menu:
   # about: /about
   tags: /tags||tags 
   categories: /categories||th 
-  archives: /archives||archive
+  # archives: /archives||archive
   # schedule: /schedule||calendar
   # sitemap: /sitemap.xml||sitemap
   #commonweal: /404/ || heartbeat
@@ -407,10 +407,10 @@ gitment:
   lazy: false # Comments lazy loading with a button
   cleanly: false # Hide 'Powered by ...' on footer, and more
   language: # Force language, or auto switch by theme
-  github_user: # MUST HAVE, Your Github ID
-  github_repo: # MUST HAVE, The repo you use to store Gitment comments
-  client_id: # MUST HAVE, Github client id for the Gitment
-  client_secret: # EITHER this or proxy_gateway, Github access secret token for the Gitment
+  github_user: fuyanzhang
+  github_repo: fuyanzhang.github.io
+  client_id: a666613fc4ce134411e4
+  client_secret: 3c7b2c944f3ba0a9b120d1f1d2437a916270b078 # EITHER this or proxy_gateway, Github access secret token for the Gitment
   proxy_gateway: # Address of api proxy, See: https://github.com/aimingoo/intersect
   redirect_protocol: # Protocol of redirect_uri with force_redirect_protocol when mint enabled
 
