@@ -1,0 +1,7 @@
+@startuml
+Poller --> Poller :events()将事件队列中的\n事件注册到Poller的Selector中
+Poller --> Selector: select()选取准备好的channel
+Poller --> Poller: processKey() 循环处理选取的channel
+Poller --> Poller: processSocket() 将该请求丢到工作线程池中进行异步处理
+
+@enduml

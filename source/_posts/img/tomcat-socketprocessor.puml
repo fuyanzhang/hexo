@@ -1,0 +1,20 @@
+@startuml
+SocketProcessorBase --> SocketProcessorBase: run()
+SocketProcessorBase --> SocketProcessor : doRun()
+SocketProcessor --> AbstractEndpoint : getHandler()
+AbstractEndpoint --> SocketProcessor: 返回ConnectionHandler，proto为Http11NioProtocol
+SocketProcessor -->  AbstractProtocol: process()
+AbstractProtocol --> AbstractProcessorLight: process()
+AbstractProcessorLight --> Http11Processor : service()
+Http11Processor --> Http11InputBuffer: parseRequestLine()
+Http11Processor --> Http11Processor: prepareRequestProtocol()
+Http11Processor --> Http11InputBuffer: parseHeaders()
+Http11Processor --> Http11Processor: prepareRequest()
+Http11Processor --> CoyoteAdapter: service()
+CoyoteAdapter --> Connector :getService().getContainer().getPipeline().getFirst().invoke()
+Connector --> StandardWrapperValue: invoke()
+StandardWrapperValue --> ApplicationFilterChain: createFilterChain()
+ApplicationFilterChain --> StandardWrapperValue:返回chain
+StandardWrapperValue --> ApplicationFilterChain: doFilter()
+ApplicationFilterChain --> Servlet : service()
+@enduml

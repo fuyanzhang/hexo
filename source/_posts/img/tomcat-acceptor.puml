@@ -1,0 +1,12 @@
+@startuml
+Acceptor -> NioEndpoint: serverSocketAccept()
+NioEndpoint --> ServerSocketChannel: accept()
+... 
+ServerSocketChannel --> NioEndpoint: SocketChannel
+NioEndpoint --> Acceptor: SocketChannel
+Acceptor --> NioEndpoint: setSocketOptions(SocketChannel)
+NioEndpoint --> Poller:register()
+PollerEvent --> Poller: new()
+Poller --> Poller: addEvent()
+
+@enduml
