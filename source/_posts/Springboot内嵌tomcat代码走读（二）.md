@@ -313,9 +313,7 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
 我们主要看`SocketProcessor`类的`run()`方法的处理逻辑。
 按照惯例，先上时序图。
 ![tomcat SocketProcessor时序图](/images/tomcat-worker.png)
-> 1、
-> 2、
-> 3、
+从时序图上可以清楚的了解worker的工作流程。这里就不做详细的说明了。
 关于servlet相关的处理，放在下篇文章里进行详细解读。
 到此，tomcat接收请求的过程源码大体已经处理完成了。接下来就是servlet的处理了。
 
