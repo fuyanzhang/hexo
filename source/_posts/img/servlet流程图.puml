@@ -1,0 +1,43 @@
+@startuml
+StandardWrapperValve -> StandardWrapperValve: invoke()
+
+StandardWrapperValve -> StanderdWrapper: allocate()
+StanderdWrapper -> StanderdWrapper: initServlet()
+StanderdWrapper -> GenericServlet: init(ServletConfig)
+GenericServlet -> HttpServletBean: init()
+HttpServletBean -> FrameworkServlet: initServletBean()
+FrameworkServlet -> FrameworkServlet: initWebApplicationContext()
+FrameworkServlet -> DispatcherServlet: onRefresh()
+DispatcherServlet -> DispatcherServlet: initStrategies()
+DispatcherServlet -> DispatcherServlet: initMultipartResolver():文件解析器
+DispatcherServlet -> DispatcherServlet: initLocaleResolver()：国际化解析器
+DispatcherServlet -> DispatcherServlet: initThemeResolver():主题解析器
+DispatcherServlet -> DispatcherServlet: initHandlerMappings():处理器映射解析器
+DispatcherServlet -> DispatcherServlet: initHandlerAdapters():处理器适配器
+DispatcherServlet -> DispatcherServlet: initHandlerExceptionResolvers():异常解析器
+DispatcherServlet -> DispatcherServlet: initRequestToViewNameTranslator():异常时处理视图
+DispatcherServlet -> DispatcherServlet: initViewResolvers():视图解析器
+DispatcherServlet -> DispatcherServlet: initFlashMapManager():
+FrameworkServlet -> FrameworkServlet: initFrameworkServlet():默认为空实现
+
+StanderdWrapper -> ApplicationFilterFactory: createFilterChain()
+StanderdWrapper <- ApplicationFilterFactory:返回ApplicationFilterChain
+StanderdWrapper -> ApplicationFilterChain: doFilter()
+ApplicationFilterChain -> ApplicationFilterChain: internalDoFilter()
+ApplicationFilterChain -> HttpServlet : service(ServletRequest req, ServletResponse res)
+HttpServlet -> HttpServlet: service(HttpServletRequest req, HttpServletResponse resp)
+HttpServlet -> FrameworkServlet: doXXX()
+FrameworkServlet -> FrameworkServlet: processRequest()
+FrameworkServlet -> DispatcherServlet: doService()
+DispatcherServlet -> DispatcherServlet: doDispatch()
+DispatcherServlet -> HandlerExecutionChain: getHandler()
+DispatcherServlet <- HandlerExecutionChain :返回HandlerExecutionChain
+DispatcherServlet -> HandlerAdapter: getHandlerAdapter()
+DispatcherServlet <- HandlerAdapter : 返回HandlerAdapter
+DispatcherServlet -> HandlerExecutionChain: applyPreHandle(),处理inteceptor的preHandle
+DispatcherServlet -> HandlerAdapter: handler()
+DispatcherServlet -> HandlerExecutionChain:applyPostHandle(),处理inteceptor的postHandle
+DispatcherServlet -> DispatcherServlet: processDispatchResult(),处理视图
+DispatcherServlet -> DispatcherServlet: render()
+DispatcherServlet -> View: render()
+@enduml
