@@ -986,4 +986,4 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 
 ```
 以上代码就进入到了servlet的另外一个生命周期了，提供service服务了。
-下篇文章，我们具体看下service接口里的逻辑。
+下篇文章，我们具体看下service接口里的逻辑.
