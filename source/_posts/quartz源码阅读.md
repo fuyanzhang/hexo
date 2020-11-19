@@ -2,18 +2,26 @@
 title: quartz源码阅读
 date: 2020-07-17 18:38:23
 tags:
-- java
-- 源码阅读
-- 定时任务
+  - java
+  - 源码阅读
+  - 定时任务
 categories:
-- 源码阅读
+  - 源码阅读
+  - 技术
 ---
+
 ## 前面的话
-这里只对quartz的源码做一个整体的梳理，关于quartz的整体结构，百度Google之，一堆一堆的。
+
+这里只对 quartz 的源码做一个整体的梳理，关于 quartz 的整体结构，百度 Google 之，一堆一堆的。
+
 ## 具体阅读
-quartz中主要围绕3个东东搞各种逻辑。分别是调度器（Scheduler），触发器（trigger）和任务（job）。调度器去获取触发器，触发器指定任务的调度时间，调度策略，调度状态，优先级，开始时间，结束时间等信息。任务就是具体的业务逻辑实现。
+
+quartz 中主要围绕 3 个东东搞各种逻辑。分别是调度器（Scheduler），触发器（trigger）和任务（job）。调度器去获取触发器，触发器指定任务的调度时间，调度策略，调度状态，优先级，开始时间，结束时间等信息。任务就是具体的业务逻辑实现。
+
 <!--more-->
+
 ### 一个栗子进入代码
+
 ```
         SchedulerFactory factory = new StdSchedulerFactory("test_quartz.properties");
         Scheduler scheduler = factory.getScheduler();
@@ -23,6 +31,7 @@ quartz中主要围绕3个东东搞各种逻辑。分别是调度器（Scheduler�
         scheduler.scheduleJob(job,t);
     }
 ```
+
 ```
 public class TestJob implements Job {
     @Override
@@ -36,6 +45,7 @@ public class TestJob implements Job {
     }
 }
 ```
+
 上面两段代码就是一个简单的任务的写法。
 主要过程如下：
 1、首先通过调度器工厂获取一个调度器。启动调度器。
@@ -43,8 +53,9 @@ public class TestJob implements Job {
 3、定义任务。
 4、通过调度器将触发器和任务关联起来。
 首先来看下调度器的初始化。
-调度器工厂初始化主要是读取配置信息。通过getScheduler方法才是真正的初始化scheduler，里边主要是通过配置信息组装scheduler。这里不是重点，一笔带过。【注：在调度器组装的时候，顺便启动了任务的执行线程
+调度器工厂初始化主要是读取配置信息。通过 getScheduler 方法才是真正的初始化 scheduler，里边主要是通过配置信息组装 scheduler。这里不是重点，一笔带过。【注：在调度器组装的时候，顺便启动了任务的执行线程
 ` qs = new QuartzScheduler(rsrcs, idleWaitTime, dbFailureRetry);`
+
 ```
 public QuartzScheduler(QuartzSchedulerResources resources, long idleWaitTime, @Deprecated long dbRetryInterval)
         throws SchedulerException {
@@ -57,22 +68,28 @@ public QuartzScheduler(QuartzSchedulerResources resources, long idleWaitTime, @D
         ThreadExecutor schedThreadExecutor = resources.getThreadExecutor();
         schedThreadExecutor.execute(this.schedThread);
 ```
-，只是在线程启动后一直等待，知道调度器调用start方法
-  ```
- while (paused && !halted.get()) {
-                        try {
-                            // wait until togglePause(false) is called...
-                            sigLock.wait(1000L);
-                        } catch (InterruptedException ignore) {
-                        }
+
+，只是在线程启动后一直等待，知道调度器调用 start 方法
+
 ```
+while (paused && !halted.get()) {
+                      try {
+                          // wait until togglePause(false) is called...
+                          sigLock.wait(1000L);
+                      } catch (InterruptedException ignore) {
+                      }
+```
+
 】
 
 下面试调度器的启动。
+
 ### 调度器启动过程
-quartz支持集群模式下的任务调度。任务持久化采用DB的方式。
+
+quartz 支持集群模式下的任务调度。任务持久化采用 DB 的方式。
 这里主要涉及集群模式下的任务执行过程。
 启动过程代码如下：
+
 ```
  public void start() throws SchedulerException {
         if (shuttingDown|| closed) {
@@ -83,16 +100,16 @@ quartz支持集群模式下的任务调度。任务持久化采用DB的方式。
         if (initialStart == null) {
             initialStart = new Date();
     //调度器第一次启动
-            this.resources.getJobStore().schedulerStarted();            
+            this.resources.getJobStore().schedulerStarted();
             startPlugins();
         } else {
-          
+
             resources.getJobStore().schedulerResumed();
         }
     //将执行线程唤醒。用于获取触发器，触发任务
         schedThread.togglePause(false);
         getLog().info(
-                "Scheduler " + resources.getUniqueIdentifier() + " started.");        
+                "Scheduler " + resources.getUniqueIdentifier() + " started.");
         notifySchedulerListenersStarted();
     }
 ```
@@ -121,14 +138,18 @@ public void schedulerStarted() throws SchedulerException {
             misfireHandler.setContextClassLoader(initializersLoader);
         misfireHandler.initialize();
         schedulerRunning = true;
-        
+
         getLog().debug("JobStore background threads started (as scheduler was started).");
     }
 ```
-下面深入对三大线程做讲解。QuartzSchedulerThread，ClusterManager和MisfireHandler。
+
+下面深入对三大线程做讲解。QuartzSchedulerThread，ClusterManager 和 MisfireHandler。
+
 #### QuartzSchedulerThread
-这个线程是quartz的主要线程，负责调度的。看下代码：
-run方法很长，这里选取主要的代码。
+
+这个线程是 quartz 的主要线程，负责调度的。看下代码：
+run 方法很长，这里选取主要的代码。
+
 ```
   public void run() {
         int acquiresFailed = 0;
@@ -183,14 +204,16 @@ run方法很长，这里选取主要的代码。
  //后面就是该线程等待一段时间，用于其他节点来调度任务。
     }
 ```
+
 总结起来，上面代码的逻辑如下：
-1、启动时，该线程一直都在等待，知道有调用scheudler的start方法，开始唤醒该线程。
-2、查看当前任务的处理线程池里空闲线程的个数，然后去qrtz_triggers表中获取可以处理的trigger，并将trigger的状态改为acquired，同时插入表qrtz_fired_triggers,此时qrtz_fired_triggers表中trigger的状态也为acquired。
-3、获取到待执行的trigger，由于取的是时间窗里的trigger，所以，从待执行的trigger列表中取第一个trigger（trigger列表是按照next_fire_time升序排列），与当前时间比较，如果大于2s，则等待。
-4、等到第一个trigger的任务到了，则去qrtz_triggers表中再次确认获取到的trigger的状态是否为aquired，若是，则修改qrtz_fired_triggers状态为executing。同时，qrtz_triggers中的状态在本次调度时已经走到尽头，可以等待下一次的调度了。即，计算下一次的调度时间，将并将任务状态改为watting状态。若计算得到的下一次调度时间为null，则表明该任务已经执行完成。将任务改为complete状态。返回待本次调度的trigger。
-5、循环trigger，获取任务执行线程，执行任务的execute方法。
-6、改调度线程wait一段时间，等待下一次获取trigger，调度。
-接下来看下真正调度的线程JobRunShell，同样，很长的run方法，这里只摘取部分代码：
+1、启动时，该线程一直都在等待，知道有调用 scheudler 的 start 方法，开始唤醒该线程。
+2、查看当前任务的处理线程池里空闲线程的个数，然后去 qrtz_triggers 表中获取可以处理的 trigger，并将 trigger 的状态改为 acquired，同时插入表 qrtz_fired_triggers,此时 qrtz_fired_triggers 表中 trigger 的状态也为 acquired。
+3、获取到待执行的 trigger，由于取的是时间窗里的 trigger，所以，从待执行的 trigger 列表中取第一个 trigger（trigger 列表是按照 next_fire_time 升序排列），与当前时间比较，如果大于 2s，则等待。
+4、等到第一个 trigger 的任务到了，则去 qrtz_triggers 表中再次确认获取到的 trigger 的状态是否为 aquired，若是，则修改 qrtz_fired_triggers 状态为 executing。同时，qrtz_triggers 中的状态在本次调度时已经走到尽头，可以等待下一次的调度了。即，计算下一次的调度时间，将并将任务状态改为 watting 状态。若计算得到的下一次调度时间为 null，则表明该任务已经执行完成。将任务改为 complete 状态。返回待本次调度的 trigger。
+5、循环 trigger，获取任务执行线程，执行任务的 execute 方法。
+6、改调度线程 wait 一段时间，等待下一次获取 trigger，调度。
+接下来看下真正调度的线程 JobRunShell，同样，很长的 run 方法，这里只摘取部分代码：
+
 ```
  public void run() {
         qs.addInternalSchedulerListener(this);
@@ -266,15 +289,18 @@ run方法很长，这里选取主要的代码。
         }
     }
 ```
-上述代码的逻辑很简单，就是获取job并执行job的execute方法。执行完成之后，通过不同的返回码，进行不同的数据库操作。   `qs.notifyJobStoreJobComplete(trigger, jobDetail, instCode);`这句话就是通过不同的返回值做不同的数据库操作。主要是修改qrtz_triggers里的trigger状态及某些场景下删除trigger。然后是删除qrtz_fired_triggers里的当前trigger。
-到此，正常的任务调度完成了。当然其中很多步骤里都调用了SchedulerListener，TriggerListener中的一些方法，这些是quartz开放出来的定制接口，方便每步操作时，我们对任务的监控。
+
+上述代码的逻辑很简单，就是获取 job 并执行 job 的 execute 方法。执行完成之后，通过不同的返回码，进行不同的数据库操作。 `qs.notifyJobStoreJobComplete(trigger, jobDetail, instCode);`这句话就是通过不同的返回值做不同的数据库操作。主要是修改 qrtz_triggers 里的 trigger 状态及某些场景下删除 trigger。然后是删除 qrtz_fired_triggers 里的当前 trigger。
+到此，正常的任务调度完成了。当然其中很多步骤里都调用了 SchedulerListener，TriggerListener 中的一些方法，这些是 quartz 开放出来的定制接口，方便每步操作时，我们对任务的监控。
 ![状态转换](https://upload-images.jianshu.io/upload_images/11942209-865598eb7cbf6f1c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-#### 接下来看misfired的进程MisfireHandler。
-Misfirehandler是一个内部类。run接口 代码如下：
+#### 接下来看 misfired 的进程 MisfireHandler。
+
+Misfirehandler 是一个内部类。run 接口 代码如下：
+
 ```
   public void run() {
-            
+
             while (!shutdown) {
 
                 long sTime = System.currentTimeMillis();
@@ -299,7 +325,7 @@ Misfirehandler是一个内部类。run接口 代码如下：
                             timeToSleep = Math.max(getDbRetryInterval(), timeToSleep);
                         }
                     }
-                    
+
                     try {
                         Thread.sleep(timeToSleep);
                     } catch (Exception ignore) {
@@ -308,7 +334,9 @@ Misfirehandler是一个内部类。run接口 代码如下：
             }
         }
 ```
-主要逻辑在manager方法里。
+
+主要逻辑在 manager 方法里。
+
 ```
  private RecoverMisfiredJobsResult manage() {
             try {
@@ -328,22 +356,24 @@ Misfirehandler是一个内部类。run接口 代码如下：
             return RecoverMisfiredJobsResult.NO_OP;
         }
 ```
-主要的方法是doRecoverMisfires()。
+
+主要的方法是 doRecoverMisfires()。
+
 ```
 protected RecoverMisfiredJobsResult doRecoverMisfires() throws JobPersistenceException {
         boolean transOwner = false;
         Connection conn = getNonManagedTXConnection();
         try {
             RecoverMisfiredJobsResult result = RecoverMisfiredJobsResult.NO_OP;
-            
-            // Before we make the potentially expensive call to acquire the 
+
+            // Before we make the potentially expensive call to acquire the
             // trigger lock, peek ahead to see if it is likely we would find
             // misfired triggers requiring recovery.
             int misfireCount = (getDoubleCheckLockMisfireHandler()) ?
                 getDelegate().countMisfiredTriggersInState(
-                    conn, STATE_WAITING, getMisfireTime()) : 
+                    conn, STATE_WAITING, getMisfireTime()) :
                 Integer.MAX_VALUE;
-            
+
             if (misfireCount == 0) {
                 getLog().debug(
                     "Found 0 triggers that missed their scheduled fire-time.");
@@ -352,13 +382,15 @@ protected RecoverMisfiredJobsResult doRecoverMisfires() throws JobPersistenceExc
                 //修改misfired的next fired time ，等待任务选取线程去调度
                 result = recoverMisfiredJobs(conn, false);
             }
-            
+
             commitConnection(conn);
             return result;
 ```
- `  int misfireCount = (getDoubleCheckLockMisfireHandler()) ? getDelegate().countMisfiredTriggersInState( conn,STATE_WAITING,getMisfireTime()) : `
-获取misfired的trigger，执行的查询为`select count(TRIGGER_NAME) from QRTZ_TRIGGERS where SCHED_NAME=xxx and not (MISFIRE_INSTR = -1 ) and NEXT_FIRE_TIME < 当前时间 and TRIGGER_STATE='STATE_WAITING'`即选取当前调度器的misfired的策略不为-1的，且下一次执行时间小于当前时间的且状态为waiting的trigger。
-` result = recoverMisfiredJobs(conn, false);`真正获取misfired的job的时候了。
+
+` int misfireCount = (getDoubleCheckLockMisfireHandler()) ? getDelegate().countMisfiredTriggersInState( conn,STATE_WAITING,getMisfireTime()) :`
+获取 misfired 的 trigger，执行的查询为`select count(TRIGGER_NAME) from QRTZ_TRIGGERS where SCHED_NAME=xxx and not (MISFIRE_INSTR = -1 ) and NEXT_FIRE_TIME < 当前时间 and TRIGGER_STATE='STATE_WAITING'`即选取当前调度器的 misfired 的策略不为-1 的，且下一次执行时间小于当前时间的且状态为 waiting 的 trigger。
+` result = recoverMisfiredJobs(conn, false);`真正获取 misfired 的 job 的时候了。
+
 ```
 protected RecoverMisfiredJobsResult recoverMisfiredJobs(
         Connection conn, boolean recovering)
@@ -366,16 +398,16 @@ protected RecoverMisfiredJobsResult recoverMisfiredJobs(
 
         // If recovering, we want to handle all of the misfired
         // triggers right away.
-        int maxMisfiresToHandleAtATime = 
+        int maxMisfiresToHandleAtATime =
             (recovering) ? -1 : getMaxMisfiresToHandleAtATime();
-        
+
         List<TriggerKey> misfiredTriggers = new LinkedList<TriggerKey>();
         long earliestNewTime = Long.MAX_VALUE;
-        // We must still look for the MISFIRED state in case triggers were left 
-        // in this state when upgrading to this version that does not support it. 
+        // We must still look for the MISFIRED state in case triggers were left
+        // in this state when upgrading to this version that does not support it.
         boolean hasMoreMisfiredTriggers =
             getDelegate().hasMisfiredTriggersInState(
-                conn, STATE_WAITING, getMisfireTime(), 
+                conn, STATE_WAITING, getMisfireTime(),
                 maxMisfiresToHandleAtATime, misfiredTriggers);
 
         if (hasMoreMisfiredTriggers) {
@@ -383,19 +415,19 @@ protected RecoverMisfiredJobsResult recoverMisfiredJobs(
                 "Handling the first " + misfiredTriggers.size() +
                 " triggers that missed their scheduled fire-time.  " +
                 "More misfired triggers remain to be processed.");
-        } else if (misfiredTriggers.size() > 0) { 
+        } else if (misfiredTriggers.size() > 0) {
             getLog().info(
-                "Handling " + misfiredTriggers.size() + 
+                "Handling " + misfiredTriggers.size() +
                 " trigger(s) that missed their scheduled fire-time.");
         } else {
             getLog().debug(
                 "Found 0 triggers that missed their scheduled fire-time.");
-            return RecoverMisfiredJobsResult.NO_OP; 
+            return RecoverMisfiredJobsResult.NO_OP;
         }
 
         for (TriggerKey triggerKey: misfiredTriggers) {
-            
-            OperableTrigger trig = 
+
+            OperableTrigger trig =
                 retrieveTrigger(conn, triggerKey);
 
             if (trig == null) {
@@ -412,8 +444,10 @@ protected RecoverMisfiredJobsResult recoverMisfiredJobs(
                 hasMoreMisfiredTriggers, misfiredTriggers.size(), earliestNewTime);
     }
 ```
-每次获取misfired的trigger有一定的数量，默认20个，超过20个，则会在下一次去获取。
-处理misfired的trigger` doUpdateOfMisfiredTrigger(conn, trig, false, STATE_WAITING, recovering);`
+
+每次获取 misfired 的 trigger 有一定的数量，默认 20 个，超过 20 个，则会在下一次去获取。
+处理 misfired 的 trigger` doUpdateOfMisfiredTrigger(conn, trig, false, STATE_WAITING, recovering);`
+
 ```
  private void doUpdateOfMisfiredTrigger(Connection conn, OperableTrigger trig, boolean forceState, String newStateIfNotComplete, boolean recovering) throws JobPersistenceException {
         Calendar cal = null;
@@ -439,6 +473,7 @@ protected RecoverMisfiredJobsResult recoverMisfiredJobs(
         }
     }
 ```
-执行完上面的代码，提交了数据库事物后，任务就可以被正常调度了。到这里，misfired的任务大体的也完成。
-然后就是回到manager方法了。唤醒调度线程，至此，misfired的本次扫描全部完成，接下来的事情就交给`QuartzSchedulerThread`来处理了。
-写了好几天，终于写完了两个线程的处理过程。接下来的一篇主要介绍任务节点在down机的时候的处理及不同情况下trigger的next_fire_time的计算。
+
+执行完上面的代码，提交了数据库事物后，任务就可以被正常调度了。到这里，misfired 的任务大体的也完成。
+然后就是回到 manager 方法了。唤醒调度线程，至此，misfired 的本次扫描全部完成，接下来的事情就交给`QuartzSchedulerThread`来处理了。
+写了好几天，终于写完了两个线程的处理过程。接下来的一篇主要介绍任务节点在 down 机的时候的处理及不同情况下 trigger 的 next_fire_time 的计算。

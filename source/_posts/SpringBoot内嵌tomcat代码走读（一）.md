@@ -1,21 +1,25 @@
 ---
 title: SpringBoot内嵌tomcat代码走读（一）
 date: 2020-08-04 10:21:46
-tags: 
-- Java
-- 源码阅读
-- Spring
+tags:
+  - Java
+  - 源码阅读
+  - Spring
 categories:
-- 源码阅读
-- Spring
+  - 源码阅读
+  - Spring
+  - 技术
 ---
 
-花了一个礼拜的时间，大致走读了一下springboot内嵌tomcat的代码，为下一步自己实现一个web容器做知识储备。这里对走读的代码做一个大致的记录。
+花了一个礼拜的时间，大致走读了一下 springboot 内嵌 tomcat 的代码，为下一步自己实现一个 web 容器做知识储备。这里对走读的代码做一个大致的记录。
+
 <!--more-->
 
-### springboot内嵌tomcat
-我们知道，springboot自动装配的相关功能封装在spring-boot-autoconfigure包中。这里通过走读spring-boot的2.4.0-M版本的代码来大致看一下tomcat的启动过程。
-首先，写一个简单的demo，调用springboot的run方法，一步一步来看tomcat如何启动的。
+### springboot 内嵌 tomcat
+
+我们知道，springboot 自动装配的相关功能封装在 spring-boot-autoconfigure 包中。这里通过走读 spring-boot 的 2.4.0-M 版本的代码来大致看一下 tomcat 的启动过程。
+首先，写一个简单的 demo，调用 springboot 的 run 方法，一步一步来看 tomcat 如何启动的。
+
 ```
 @SpringBootApplication
 public class TestApplication {
@@ -24,7 +28,9 @@ public class TestApplication {
     }
 }
 ```
-查看run方法里做了什么。
+
+查看 run 方法里做了什么。
+
 ```
 public ConfigurableApplicationContext run(String... args) {
 		StopWatch stopWatch = new StopWatch();
@@ -71,9 +77,11 @@ public ConfigurableApplicationContext run(String... args) {
 		return context;
 	}
 ```
+
 这里，初始化的`context`是一个`AnnotationConfigServletWebServerApplicationContext`。我们看一下该类的继承关系。
 ![AnnotationConfigServletWebServerApplicationContext](/images/AnnotationConfigServletWebServerApplicationContext.png)
-本篇日记重点看的就是`refreshContext(context)`，这个真正的进入spring bean的处理。也在这个方法里，进行了tomcat的初始化及启动。继续走读这个方法的代码。一步一步跟下去，就进入了`AbstractApplicationContext`的`refresh`方法中。方法的代码如下：
+本篇日记重点看的就是`refreshContext(context)`，这个真正的进入 spring bean 的处理。也在这个方法里，进行了 tomcat 的初始化及启动。继续走读这个方法的代码。一步一步跟下去，就进入了`AbstractApplicationContext`的`refresh`方法中。方法的代码如下：
+
 ```
 public void refresh() throws BeansException, IllegalStateException {
 		synchronized (this.startupShutdownMonitor) {
@@ -139,7 +147,9 @@ public void refresh() throws BeansException, IllegalStateException {
 		}
 	}
 ```
-通过spring的注释，可以大致猜测，关于tomcat的初始化，应该在方法`onRefresh`中实现。当然，这里是通过debug源码，看调用栈信息能确切的知道这个方法就是tomcat初始化的入口。这个方法实现在子类里。上面在创建spring的`context`时，我们看到，这里创建的是一个`ServletWebServerApplicationContext`，`onRefresh`就在该类中实现。进入该方法，看到如下代码：
+
+通过 spring 的注释，可以大致猜测，关于 tomcat 的初始化，应该在方法`onRefresh`中实现。当然，这里是通过 debug 源码，看调用栈信息能确切的知道这个方法就是 tomcat 初始化的入口。这个方法实现在子类里。上面在创建 spring 的`context`时，我们看到，这里创建的是一个`ServletWebServerApplicationContext`，`onRefresh`就在该类中实现。进入该方法，看到如下代码：
+
 ```
 	@Override
 	protected void onRefresh() {
@@ -152,7 +162,9 @@ public void refresh() throws BeansException, IllegalStateException {
 		}
 	}
 ```
-`createWebServer`就是创建webserver的代码。代码：
+
+`createWebServer`就是创建 webserver 的代码。代码：
+
 ```
 private void createWebServer() {
 		WebServer webServer = this.webServer;
@@ -176,7 +188,9 @@ private void createWebServer() {
 		initPropertySources();
 	}
 ```
-`ServletWebServerFactory`为自动装配进来，此时在`BeanFactory`中已经存在了。具体代码配置在spring-boot-autoconfigure包的META-INF/spring.factories中。
+
+`ServletWebServerFactory`为自动装配进来，此时在`BeanFactory`中已经存在了。具体代码配置在 spring-boot-autoconfigure 包的 META-INF/spring.factories 中。
+
 ```
 # Auto Configure
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
@@ -184,7 +198,9 @@ org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration,\
 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration,\
 ```
-`ServletWebServerFactoryAutoConfiguration`中import了一些类，其中impot了EmbeddedTomcat。
+
+`ServletWebServerFactoryAutoConfiguration`中 import 了一些类，其中 impot 了 EmbeddedTomcat。
+
 ```
 @Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass({ Servlet.class, Tomcat.class, UpgradeProtocol.class })
@@ -208,8 +224,10 @@ org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoCo
 
 	}
 ```
-在这里生成了一个`TomcatServletWebServerFactory`的bean。
-再次回到`createWebServer`中，`this.webServer = factory.getWebServer(getSelfInitializer());`从factory中生产出一个webserver。我们看这个webServer是如何生产出来的。
+
+在这里生成了一个`TomcatServletWebServerFactory`的 bean。
+再次回到`createWebServer`中，`this.webServer = factory.getWebServer(getSelfInitializer());`从 factory 中生产出一个 webserver。我们看这个 webServer 是如何生产出来的。
+
 ```
 public WebServer getWebServer(ServletContextInitializer... initializers) {
 		if (this.disableMBeanRegistry) {
@@ -232,10 +250,11 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
 		return getTomcatWebServer(tomcat);
 	}
 ```
-上面这段代码，就正式进入到了tomcat的领域了。为了能更好的阅读代码，我们需要了解tomcat的体系结构。这里通过代码的阅读和分析，总结了一张结构图。
+
+上面这段代码，就正式进入到了 tomcat 的领域了。为了能更好的阅读代码，我们需要了解 tomcat 的体系结构。这里通过代码的阅读和分析，总结了一张结构图。
 
 ![tomcat结构](/images/tomcat结构.png)
 
-tomcat的初始化，无非就是将图中的各个部分初始化，塞到对应的位置。有了这张图，代码读起来就比较轻松了，代码也相对简单，可以自己按照图中的结构，进行走读。这里不再记录。
-`getWebServer`代码走完，tomcat就初始化完成了，那么是不是就可以接收请求了呢。当然不行。socket还没起来，tomcat的工作线程还没起来。这部分功能不在上面的`onRefresh`中，而在接下来的`finishRefresh`中，只有所有的准备工作都已经完成了，请求才能接进来。这部分功能将在下一篇日记中走读。
-至此，springboot的内嵌tomcat初始化完成。这里只记录了主流程的初始化，其中一些配置类信息如`ServerProperties`等的初始化并没有在这篇日记中体现。
+tomcat 的初始化，无非就是将图中的各个部分初始化，塞到对应的位置。有了这张图，代码读起来就比较轻松了，代码也相对简单，可以自己按照图中的结构，进行走读。这里不再记录。
+`getWebServer`代码走完，tomcat 就初始化完成了，那么是不是就可以接收请求了呢。当然不行。socket 还没起来，tomcat 的工作线程还没起来。这部分功能不在上面的`onRefresh`中，而在接下来的`finishRefresh`中，只有所有的准备工作都已经完成了，请求才能接进来。这部分功能将在下一篇日记中走读。
+至此，springboot 的内嵌 tomcat 初始化完成。这里只记录了主流程的初始化，其中一些配置类信息如`ServerProperties`等的初始化并没有在这篇日记中体现。

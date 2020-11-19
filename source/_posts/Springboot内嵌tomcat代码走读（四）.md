@@ -1,18 +1,22 @@
 ---
 title: Springboot内嵌tomcat代码走读（四）
 date: 2020-10-21 10:04:00
-tags: 
-- Java
-- 源码阅读
-- Spring
+tags:
+  - Java
+  - 源码阅读
+  - Spring
 categories:
-- 源码阅读
-- Spring
+  - 源码阅读
+  - Spring
+  - 技术
 ---
 
-上篇文章我们走读了servlet生命周期中的创建和初始化以及servlet中Filter在springboot中的使用。本文继续进行servlet生命周期中下面的部分，提供服务即service方法。
+上篇文章我们走读了 servlet 生命周期中的创建和初始化以及 servlet 中 Filter 在 springboot 中的使用。本文继续进行 servlet 生命周期中下面的部分，提供服务即 service 方法。
+
 <!--more-->
-Servlet的service方法在HttpServlet中实现，代码为：
+
+Servlet 的 service 方法在 HttpServlet 中实现，代码为：
+
 ```
     @Override
     public void service(ServletRequest req, ServletResponse res)
@@ -30,6 +34,7 @@ Servlet的service方法在HttpServlet中实现，代码为：
         service(request, response);
     }
 ```
+
 ```
 	@Override
 	protected void service(HttpServletRequest request, HttpServletResponse response)
@@ -44,6 +49,7 @@ Servlet的service方法在HttpServlet中实现，代码为：
 		}
 	}
 ```
+
 ```
 protected void service(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
@@ -110,8 +116,10 @@ protected void service(HttpServletRequest req, HttpServletResponse resp)
         }
     }
 ```
+
 罗列了上面三段代码后，发现，我们就进入到了`doXXX`方法了，这里，我们选`doGet`方法来走读代码。
-`doGet`方法的实现在类FrameworkServlet中。
+`doGet`方法的实现在类 FrameworkServlet 中。
+
 ```
 	@Override
 	protected final void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -120,6 +128,7 @@ protected void service(HttpServletRequest req, HttpServletResponse resp)
 		processRequest(request, response);
 	}
 ```
+
 ```
 protected final void processRequest(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -150,7 +159,9 @@ protected final void processRequest(HttpServletRequest request, HttpServletRespo
 	}
 
 ```
-DispatcherServlet中实现了`doService`.
+
+DispatcherServlet 中实现了`doService`.
+
 ```
 @Override
 	protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -191,7 +202,9 @@ DispatcherServlet中实现了`doService`.
 		}
 	}
 ```
+
 `doDispatch`方法实现：
+
 ```
 protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		HttpServletRequest processedRequest = request;
@@ -285,9 +298,13 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 	}
 
 ```
+
 接下来，我们看每步操作的具体实现。
-##### Handler的获取
-先看getHandler方法的代码：
+
+##### Handler 的获取
+
+先看 getHandler 方法的代码：
+
 ```
 	@Nullable
 	protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
@@ -302,12 +319,14 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 		return null;
 	}
 ```
-这里从handlerMappings中获取mapping，handlerMappings值是有顺序的，排第一的一般是RequestMappingHandlerMapping,这里handlerMappings在前文中说的`initHandlerMappings`里做的初始化，主要取HandlerMapping类型的bean。默认情况下，springboot里有5个，分别为`RequestMappingHandlerMapping`,`WelcomePageHandlerMapping`,`BeanNameUrlHandlerMapping`,`RouterFunctionMapping`和`SimpleUrlHandlerMapping`,这些bean定义在WebMvcConfiguration及其父类中。这里就不做过详细的赘述了。
-`RequestMappingHandlerMapping`比较特殊一些，这里拿出来详细看一下其bean的初始化过程，这个跟getHandler有关系。
+
+这里从 handlerMappings 中获取 mapping，handlerMappings 值是有顺序的，排第一的一般是 RequestMappingHandlerMapping,这里 handlerMappings 在前文中说的`initHandlerMappings`里做的初始化，主要取 HandlerMapping 类型的 bean。默认情况下，springboot 里有 5 个，分别为`RequestMappingHandlerMapping`,`WelcomePageHandlerMapping`,`BeanNameUrlHandlerMapping`,`RouterFunctionMapping`和`SimpleUrlHandlerMapping`,这些 bean 定义在 WebMvcConfiguration 及其父类中。这里就不做过详细的赘述了。
+`RequestMappingHandlerMapping`比较特殊一些，这里拿出来详细看一下其 bean 的初始化过程，这个跟 getHandler 有关系。
 先看类图：
 ![RequestMappingHandlerMapping](/images/RequestMappingHandlerMapping.png)
-RequestMappingHandlerMapping实现了InitializingBean接口，就是说在该bean初始化完成后，会调用`afterPropertiesSet`进行后置处理。
+RequestMappingHandlerMapping 实现了 InitializingBean 接口，就是说在该 bean 初始化完成后，会调用`afterPropertiesSet`进行后置处理。
 我们来看该方法的实现：
+
 ```
 	public void afterPropertiesSet() {
 
@@ -329,7 +348,9 @@ RequestMappingHandlerMapping实现了InitializingBean接口，就是说在该bea
 		super.afterPropertiesSet();
 	}
 ```
-这里会调用父类的afterPropertiesSet方法。
+
+这里会调用父类的 afterPropertiesSet 方法。
+
 ```
 	@Override
 	public void afterPropertiesSet() {
@@ -346,6 +367,7 @@ RequestMappingHandlerMapping实现了InitializingBean接口，就是说在该bea
 		handlerMethodsInitialized(getHandlerMethods());
 	}
 ```
+
 ```
 	protected void processCandidateBean(String beanName) {
 		Class<?> beanType = null;
@@ -363,6 +385,7 @@ RequestMappingHandlerMapping实现了InitializingBean接口，就是说在该bea
 		}
 	}
 ```
+
 ```
 	@Override
 	protected boolean isHandler(Class<?> beanType) {
@@ -370,7 +393,9 @@ RequestMappingHandlerMapping实现了InitializingBean接口，就是说在该bea
 				AnnotatedElementUtils.hasAnnotation(beanType, RequestMapping.class));
 	}
 ```
-只有被Controller或RequestMapping注解的bean，才被当成处理器。即需要业务实现的bean，也就是我们平时写的controller。
+
+只有被 Controller 或 RequestMapping 注解的 bean，才被当成处理器。即需要业务实现的 bean，也就是我们平时写的 controller。
+
 ```
 protected void detectHandlerMethods(Object handler) {
 		Class<?> handlerType = (handler instanceof String ?
@@ -398,10 +423,12 @@ protected void detectHandlerMethods(Object handler) {
 		}
 	}
 ```
-`registerHandlerMethod`会调用`AbstractHandlerMethodMapping`的register方法，将handler注册到mapping中。
-此后，使用getHandler时，就能得到对应的handler了。返回头来，再继续看getHandler方法。
 
-先看getHandler方法的代码：
+`registerHandlerMethod`会调用`AbstractHandlerMethodMapping`的 register 方法，将 handler 注册到 mapping 中。
+此后，使用 getHandler 时，就能得到对应的 handler 了。返回头来，再继续看 getHandler 方法。
+
+先看 getHandler 方法的代码：
+
 ```
 	@Nullable
 	protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
@@ -416,7 +443,9 @@ protected void detectHandlerMethods(Object handler) {
 		return null;
 	}
 ```
-这里，for循环里第一个一般取的是`RequestMappingHandlerMapping`，看RequestMappingHandlerMapping的getHandler方法。
+
+这里，for 循环里第一个一般取的是`RequestMappingHandlerMapping`，看 RequestMappingHandlerMapping 的 getHandler 方法。
+
 ```
 public final HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
 		//在mappingRegistry中获取到处理器。
@@ -447,12 +476,15 @@ public final HandlerExecutionChain getHandler(HttpServletRequest request) throws
 		return executionChain;
 	}
 ```
-至此，就获取到一个mappedHandler。下面，我们看如何获取处理器适配器。
-##### HandlerAdapter的获取
 
-`HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());`在工厂中获取HandlerAdapter类型的bean。bean的定义也在WebMvcAutoConfiguration及其父类中。
+至此，就获取到一个 mappedHandler。下面，我们看如何获取处理器适配器。
+
+##### HandlerAdapter 的获取
+
+`HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());`在工厂中获取 HandlerAdapter 类型的 bean。bean 的定义也在 WebMvcAutoConfiguration 及其父类中。
 
 ##### 具体的业务处理
-mappedHandler和HandlerAdapter都获取完了，接下来就是具体的业务处理了。首先处理interceptor的preHandler。接下来通过HandlerAdapter的handle方法通过反射的方式调用具体的处理器里的接口，返回ModelAndView，然后处理interceptor的postHandler。最后解析ModelAndView进行视图渲染。
 
-自此，客户端请求在springboot中的流转全部完成。后面代码逻辑比较清晰，就没有专门贴代码来做详细的说明了。以后用到的时候再进行说明吧。
+mappedHandler 和 HandlerAdapter 都获取完了，接下来就是具体的业务处理了。首先处理 interceptor 的 preHandler。接下来通过 HandlerAdapter 的 handle 方法通过反射的方式调用具体的处理器里的接口，返回 ModelAndView，然后处理 interceptor 的 postHandler。最后解析 ModelAndView 进行视图渲染。
+
+自此，客户端请求在 springboot 中的流转全部完成。后面代码逻辑比较清晰，就没有专门贴代码来做详细的说明了。以后用到的时候再进行说明吧。

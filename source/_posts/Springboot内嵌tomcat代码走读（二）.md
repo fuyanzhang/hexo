@@ -1,25 +1,30 @@
 ---
 title: Springboot内嵌tomcat代码走读（二）
 date: 2020-09-24 19:13:34
-tags: 
-- Java
-- 源码阅读
-- Spring
+tags:
+  - Java
+  - 源码阅读
+  - Spring
 categories:
-- 源码阅读
-- Spring
+  - 源码阅读
+  - Spring
+  - 技术
 ---
-离上次tomcat的代码走读过了很长时间了，这段时间主要是在自己造个类似web容器的轮子，用来加深NIO的理解。同时大致走读了下undertow相关的代码。今天继续tomcat的代码走读。主要内容是tomcat如何从接收请求到处理请求并回执。
+
+离上次 tomcat 的代码走读过了很长时间了，这段时间主要是在自己造个类似 web 容器的轮子，用来加深 NIO 的理解。同时大致走读了下 undertow 相关的代码。今天继续 tomcat 的代码走读。主要内容是 tomcat 如何从接收请求到处理请求并回执。
+
 <!--more-->
 
-首先看下tomcat处理请求的线程模型。
-tomcat处理请求主要有三种线程，这里就用线程名里的关键字来标识。
-* Acceptor线程 主要是接收请求 。也是一个线程。
-* ClientPoller线程主要是向selector中注册socket，并分发到处理线程中。这是一个线程。
-* exec线程 主要负责处理真正的请求。调用servlet的service方法。这是一个线程池。
-下面从源码层面看是如何处理一个请求的。
+首先看下 tomcat 处理请求的线程模型。
+tomcat 处理请求主要有三种线程，这里就用线程名里的关键字来标识。
+
+- Acceptor 线程 主要是接收请求 。也是一个线程。
+- ClientPoller 线程主要是向 selector 中注册 socket，并分发到处理线程中。这是一个线程。
+- exec 线程 主要负责处理真正的请求。调用 servlet 的 service 方法。这是一个线程池。
+  下面从源码层面看是如何处理一个请求的。
 
 首先看上面说的三个线程的启动。
+
 ```
  // Create worker collection
             if (getExecutor() == null) {
@@ -40,7 +45,9 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
             //接收请求线程
             startAcceptorThread();
 ```
+
 工作线程的源码如下：
+
 ```
     public void createExecutor() {
         internalExecutor = true;
@@ -50,14 +57,17 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
         taskqueue.setParent( (ThreadPoolExecutor) executor);
     }
 ```
-这段代码比较简单，主要是创建一个工作的线程池，线程池的初始线程数默认是10个，最大线程数默认是200。
-下面看Acceptor的处理逻辑。
+
+这段代码比较简单，主要是创建一个工作的线程池，线程池的初始线程数默认是 10 个，最大线程数默认是 200。
+下面看 Acceptor 的处理逻辑。
 先上时序图：
 ![tomcat acceptor时序图](/images/tomcat_acceptor.png)
-> 1、Acceptor在启动后，在run方法里调用accept方法，该方法会阻塞直到有连接到来。
-> 2、在获取到channel后，将该channel封装成NioChannel，并注册到Poller中去。注册的过程就是简单的把NioChannel封装成的PollerEvent add到事件队列中。
-> 至此，Acceptor完成了自己的使命了，接下来就是循环等待下一个请求的到来。
-相关的源码如下，有些跟主体流程无关的代码就直接隐去了。
+
+> 1、Acceptor 在启动后，在 run 方法里调用 accept 方法，该方法会阻塞直到有连接到来。
+> 2、在获取到 channel 后，将该 channel 封装成 NioChannel，并注册到 Poller 中去。注册的过程就是简单的把 NioChannel 封装成的 PollerEvent add 到事件队列中。
+> 至此，Acceptor 完成了自己的使命了，接下来就是循环等待下一个请求的到来。
+> 相关的源码如下，有些跟主体流程无关的代码就直接隐去了。
+
 ```
 
  @Override
@@ -80,7 +90,7 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
                     //获取连接，线程会阻塞在这个地方，直到有新的连接请求过来。
                     socket = endpoint.serverSocketAccept();
                 } catch (Exception ioe) {
-                
+
                 }
                 // Successful accept, reset the error delay
                 errorDelay = 0;
@@ -100,7 +110,9 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
             。。。
     }
 ```
+
 下面来看下`setSocketOptions()`的实现
+
 ```
   /**
      * Process the specified connection.
@@ -160,8 +172,10 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
         return false;
     }
 ```
+
 代码很简单，就不做细致的分析与注释了。
 `register`方法代码:
+
 ```
       public void register(final NioChannel socket, final NioSocketWrapper socketWrapper) {
             socketWrapper.interestOps(SelectionKey.OP_READ);//this is what OP_REGISTER turns into.
@@ -177,7 +191,9 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
             addEvent(event);
         }
 ```
+
 `addEvent`代码
+
 ```
         private void addEvent(PollerEvent event) {
             events.offer(event);
@@ -186,15 +202,18 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
             }
         }
 ```
-到这里，Acceptor代码完成。请求已经接进来了。下面看Poller线程如何分发请求到worker线程池里。
-首先看Poller的时序图：
+
+到这里，Acceptor 代码完成。请求已经接进来了。下面看 Poller 线程如何分发请求到 worker 线程池里。
+首先看 Poller 的时序图：
 ![tomcat Poller时序图](/images/tomcat-poller.png)
-> 1、poller线程run方法里，第一件事情是处理事件队列里的事件，将Acceptor里注册的channel注册到Poller中的selector中。
-> 2、在selector中选取准备好的channel，循环进行处理。
+
+> 1、poller 线程 run 方法里，第一件事情是处理事件队列里的事件，将 Acceptor 里注册的 channel 注册到 Poller 中的 selector 中。
+> 2、在 selector 中选取准备好的 channel，循环进行处理。
 > 3、将步骤二中选取的连接丢到工作线程池中进行处理。
-至此，Poller的工作就完成了。接下来就是循环等待新的事件。
-相关源码大致为:
-`run()`的代码如下：
+> 至此，Poller 的工作就完成了。接下来就是循环等待新的事件。
+> 相关源码大致为:
+> `run()`的代码如下：
+
 ```
  /**
          * The background thread that adds sockets to the Poller, checks the
@@ -241,12 +260,14 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
                         processKey(sk, socketWrapper);
                     }
                 }
-    
+
             }
 
         }
 ```
+
 `processKey()`的源码：
+
 ```
  protected void processKey(SelectionKey sk, NioSocketWrapper socketWrapper) {
             try {
@@ -271,7 +292,9 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
         }
 
 ```
+
 `processKey`主要功能是构造`processSocket`方法的参数。下面看`processSocket`相关的代码:
+
 ```
  public boolean processSocket(SocketWrapperBase<S> socketWrapper,
             SocketEvent event, boolean dispatch) {
@@ -308,13 +331,13 @@ tomcat处理请求主要有三种线程，这里就用线程名里的关键字�
     }
 
 ```
-上面的方法就是向工作线程池里丢一个任务进行处理。丢进去的线程为`SocketProcessor`,该类继承自SocketProcessorBase,这个类实现了Runnable。
-到这里，Poller相关的代码大致走完。下面就看worker线程里做了什么事情了。这里就正式的跟servlet打交道了。
+
+上面的方法就是向工作线程池里丢一个任务进行处理。丢进去的线程为`SocketProcessor`,该类继承自 SocketProcessorBase,这个类实现了 Runnable。
+到这里，Poller 相关的代码大致走完。下面就看 worker 线程里做了什么事情了。这里就正式的跟 servlet 打交道了。
 
 我们主要看`SocketProcessor`类的`run()`方法的处理逻辑。
 按照惯例，先上时序图。
 ![tomcat SocketProcessor时序图](/images/tomcat-worker.png)
-从时序图上可以清楚的了解worker的工作流程。这里就不做详细的说明了。
-关于servlet相关的处理，放在下篇文章里进行详细解读。
-到此，tomcat接收请求的过程源码大体已经处理完成了。接下来就是servlet的处理了。
-
+从时序图上可以清楚的了解 worker 的工作流程。这里就不做详细的说明了。
+关于 servlet 相关的处理，放在下篇文章里进行详细解读。
+到此，tomcat 接收请求的过程源码大体已经处理完成了。接下来就是 servlet 的处理了。

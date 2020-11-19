@@ -1,21 +1,25 @@
 ---
 title: Springboot内嵌tomcat代码走读（三）
 date: 2020-10-12 18:25:10
-tags: 
-- Java
-- 源码阅读
-- Spring
+tags:
+  - Java
+  - 源码阅读
+  - Spring
 categories:
-- 源码阅读
-- Spring
+  - 源码阅读
+  - Spring
+  - 技术
 ---
-上篇文章走读了springboot中消息处理进入到servlet里了，这次，具体走读了请求消息在servlet里是怎么处理的。这里主要补充servlet和springmvc相关的知识。
+
+上篇文章走读了 springboot 中消息处理进入到 servlet 里了，这次，具体走读了请求消息在 servlet 里是怎么处理的。这里主要补充 servlet 和 springmvc 相关的知识。
+
 <!--more-->
-### servlet相关知识
 
-#### servlet生命周期
+### servlet 相关知识
 
-servlet生命周期在servlet的代码里能很清楚的体现出来。代码为：
+#### servlet 生命周期
+
+servlet 生命周期在 servlet 的代码里能很清楚的体现出来。代码为：
 
 ```
 
@@ -93,38 +97,51 @@ public interface Servlet {
     public void destroy();
 }
 ```
-从代码中可以看出，servlet生命周期是init-->service-->destory;
+
+从代码中可以看出，servlet 生命周期是 init-->service-->destory;
+
 #### 具体过程
+
 > 1、加载与实例化（new）
+
      servlet在启动时或第一次接收到请求时，会到内存中去查询一下是否有servlet实例，有则取出来，没有则new一个出来。
+
 > 2、初始化（init）
+
     在创建servlet之后，会调用init方法，进行初始化，该步主要是为接收处理请求做一些必要的准备，只会执行一次。
->3、提供服务（service）
+
+> 3、提供服务（service）
+
     servlet实例接收客户端的ServletRequest信息，通过request的信息，调用相应的doXXX()方法，并返回response。
->4、销毁（destroy）
+
+> 4、销毁（destroy）
+
     servlet容器在关闭时，销毁servlet实例。只会执行一次
 
-后面以SpringMVC为例来具体说明servlet的生命周期。
+后面以 SpringMVC 为例来具体说明 servlet 的生命周期。
 
-### SpringMVC相关知识
+### SpringMVC 相关知识
 
-这里只简单的罗列一下SpringMVC中M，V，C 的关系。如图：
+这里只简单的罗列一下 SpringMVC 中 M，V，C 的关系。如图：
 ![SpringMVC](/images/springMVC框架图.png)
->1、客户端发送request请求进入到分发器中，DispatcherServlet中。
->2、分发器通过uri到控制器映射中去查询相应的处理器（HandlerMapping）。
->3、分发器拿到对应的处理器之后，调用处理器响应的接口，返回数据及对应的视图。
->4、分发器拿到处理器返回的modelAndView后，查找相应的视同解析器进行渲染。
->5、视图将渲染好的结果返回给终端用户进行展示。
 
-下面通过源码的方式看springboot中关于springMVC和servlet相关的实现。
+> 1、客户端发送 request 请求进入到分发器中，DispatcherServlet 中。
+> 2、分发器通过 uri 到控制器映射中去查询相应的处理器（HandlerMapping）。
+> 3、分发器拿到对应的处理器之后，调用处理器响应的接口，返回数据及对应的视图。
+> 4、分发器拿到处理器返回的 modelAndView 后，查找相应的视同解析器进行渲染。
+> 5、视图将渲染好的结果返回给终端用户进行展示。
 
-### 请求消息在SpringMVC中的流向
+下面通过源码的方式看 springboot 中关于 springMVC 和 servlet 相关的实现。
 
-#### servlet的创建过程（new）
-源码阅读接上篇文章，现在到了servlet的处理了。在这之前，看servlet在springboot中是如何完成实例化及初始化的。
-首先看servlet是如何new出来的。springboot中，使用的是dispatcherServlet，DispatcherServlet的类的继承关系图如下
+### 请求消息在 SpringMVC 中的流向
+
+#### servlet 的创建过程（new）
+
+源码阅读接上篇文章，现在到了 servlet 的处理了。在这之前，看 servlet 在 springboot 中是如何完成实例化及初始化的。
+首先看 servlet 是如何 new 出来的。springboot 中，使用的是 dispatcherServlet，DispatcherServlet 的类的继承关系图如下
 ![DispatcherServlet](/images/DispatcherServlet.png)
-该类使用自动装配的方式初始化一个beanName为`dispatcherServlet`的bean。类名为`DispatcherServletAutoConfiguration`,具体代码如下:
+该类使用自动装配的方式初始化一个 beanName 为`dispatcherServlet`的 bean。类名为`DispatcherServletAutoConfiguration`,具体代码如下:
+
 ```
 		@Bean(name = DEFAULT_DISPATCHER_SERVLET_BEAN_NAME)
 		public DispatcherServlet dispatcherServlet(WebMvcProperties webMvcProperties) {
@@ -137,8 +154,10 @@ public interface Servlet {
 			return dispatcherServlet;
 		}
 ```
-这里就是直接new出来一个servlet，并初始化相关的配置。
-这个servlet对象是如何注册到tomcat容器里呢，这里就有下面一个名称为`dispatcherServletRegistration`的bean来做的事情了，具体代码为：
+
+这里就是直接 new 出来一个 servlet，并初始化相关的配置。
+这个 servlet 对象是如何注册到 tomcat 容器里呢，这里就有下面一个名称为`dispatcherServletRegistration`的 bean 来做的事情了，具体代码为：
+
 ```
 @Configuration(proxyBeanMethods = false)
 	@Conditional(DispatcherServletRegistrationCondition.class)
@@ -161,10 +180,12 @@ public interface Servlet {
 
 	}
 ```
+
 这里需要看一下`DispatcherServletRegistrationBean`类的继承关系图了。
 ![DispatcherServletRegistrationBean](/images/DispatcherServletRegistrationBean.png)
-从图中看出，`DispatcherServletRegistrationBean`实现了接口`ServletContextInitializer`，[SpringBoot内嵌tomcat代码走读（一）](/2020/08/04/SpringBoot内嵌tomcat代码走读（一）/#more)中，有对这个接口的调用代码。`this.webServer = factory.getWebServer(getSelfInitializer());`在获取`webServer`时，传入想改接口的调用。
-接下来我们看DispatcherServletRegistrationBean的`OnStartup`的实现,该方法实现在其父类`RegistrationBean`中。
+从图中看出，`DispatcherServletRegistrationBean`实现了接口`ServletContextInitializer`，[SpringBoot 内嵌 tomcat 代码走读（一）](/2020/08/04/SpringBoot内嵌tomcat代码走读（一）/#more)中，有对这个接口的调用代码。`this.webServer = factory.getWebServer(getSelfInitializer());`在获取`webServer`时，传入想改接口的调用。
+接下来我们看 DispatcherServletRegistrationBean 的`OnStartup`的实现,该方法实现在其父类`RegistrationBean`中。
+
 ```
 	@Override
 	public final void onStartup(ServletContext servletContext) throws ServletException {
@@ -177,7 +198,9 @@ public interface Servlet {
 	}
 
 ```
+
 主要方法`register`的实现在其子类`DynamicRegistrationBean`中。
+
 ```
 	@Override
 	protected final void register(String description, ServletContext servletContext) {
@@ -189,7 +212,9 @@ public interface Servlet {
 		configure(registration);
 	}
 ```
+
 其主要方法`addRegistration`在其子类`ServletRegistrationBean`中实现。
+
 ```
 	@Override
 	protected ServletRegistration.Dynamic addRegistration(String description, ServletContext servletContext) {
@@ -197,7 +222,9 @@ public interface Servlet {
 		return servletContext.addServlet(name, this.servlet);
 	}
 ```
+
 `servletContext`为`ApplicationContextFacade`，`addServlet`代码为:
+
 ```
     @Override
     public ServletRegistration.Dynamic addServlet(String servletName,
@@ -211,7 +238,9 @@ public interface Servlet {
         }
     }
 ```
-Tomcat的ApplicationContext里加入servlet。代码为:
+
+Tomcat 的 ApplicationContext 里加入 servlet。代码为:
+
 ```
  private ServletRegistration.Dynamic addServlet(String servletName, String servletClass,
             Servlet servlet, Map<String,String> initParams) throws IllegalStateException {
@@ -276,19 +305,23 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         return registration;
     }
 ```
-这里主要逻辑是向tomcat里添加servlet。前面我们知道tomcat的体系结构，为了提高扩展性，tomcat里分层定义了很多组件，在最内层组件为Wrapper，这里就是想warapper中添加servlet。这里用默认的wrapper，`StandardWrapper`，具体代码为：
+
+这里主要逻辑是向 tomcat 里添加 servlet。前面我们知道 tomcat 的体系结构，为了提高扩展性，tomcat 里分层定义了很多组件，在最内层组件为 Wrapper，这里就是想 warapper 中添加 servlet。这里用默认的 wrapper，`StandardWrapper`，具体代码为：
+
 ```
     @Override
     public void setServlet(Servlet servlet) {
         instance = servlet;
     }
 ```
-至此，tomcat的基本功能就有了，servlet也有了。但是，当前的servlet还不能用，因为从上面的servlet生命周期看，这只完成了第一步，还有init这一步没有完成。那么，init在什么时候呢。继续看代码。
-从代码中可以知道，当第一个请求过来时，servlet才进行init操作。接上篇文章的请求流程图，这里看请求在servlet中的流向。这里流程图从StandardWrapperValue的invoke方法开始进行。
+
+至此，tomcat 的基本功能就有了，servlet 也有了。但是，当前的 servlet 还不能用，因为从上面的 servlet 生命周期看，这只完成了第一步，还有 init 这一步没有完成。那么，init 在什么时候呢。继续看代码。
+从代码中可以知道，当第一个请求过来时，servlet 才进行 init 操作。接上篇文章的请求流程图，这里看请求在 servlet 中的流向。这里流程图从 StandardWrapperValue 的 invoke 方法开始进行。
 调用流程图如下：
 ![servlet流程图](/images/servlet流程图.png)
 按照流程图，我们走读一下代码，具体看看相关的处理逻辑。
 首先看`invoke`方法里的代码逻辑。
+
 ```
  public final void invoke(Request request, Response response)
         throws IOException, ServletException {
@@ -302,7 +335,7 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         StandardWrapper wrapper = (StandardWrapper) getContainer();
         Servlet servlet = null;
         Context context = (Context) wrapper.getParent();
-        
+
         //去掉一些与主流程关系不太大的代码
         .......
 
@@ -330,7 +363,7 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         Container container = this.container;
         try {
             if ((servlet != null) && (filterChain != null)) {
-               
+
                。。。。。。
 
                 } else {
@@ -351,11 +384,14 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         }
     }
 ```
-上面代码比较长，做了一下删减。主要的功能是初始化servlet（init）和具体调用servlet的`service`方法。
+
+上面代码比较长，做了一下删减。主要的功能是初始化 servlet（init）和具体调用 servlet 的`service`方法。
 `servlet`的`init`方法在`allocate()`中调用。`service`方法在`doFilter`中调用。
 
-#### servlet初始化过程（init）
+#### servlet 初始化过程（init）
+
 具体看下`allocate()`的实现。
+
 ```
  public Servlet allocate() throws ServletException {
 
@@ -436,8 +472,10 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         }
     }
 ```
-> allocate方法中，instance ！=null，singleThreadModel 一直都为false，因为不会走到loadServlet中，singleThreadModel的值一直为false。容器中servlet实例只有一个。提一句：如果singleThreadModel类型为SingleThreadModel时，容器中可以有多个servlet实例，放在一个大小为20的栈中。SingleThreadModel已经被废弃掉了`@deprecated As of Java Servlet API 2.4, with no direct replacement.`。
-下面看`initServlet()`方法的处理逻辑。
+
+> allocate 方法中，instance ！=null，singleThreadModel 一直都为 false，因为不会走到 loadServlet 中，singleThreadModel 的值一直为 false。容器中 servlet 实例只有一个。提一句：如果 singleThreadModel 类型为 SingleThreadModel 时，容器中可以有多个 servlet 实例，放在一个大小为 20 的栈中。SingleThreadModel 已经被废弃掉了`@deprecated As of Java Servlet API 2.4, with no direct replacement.`。
+> 下面看`initServlet()`方法的处理逻辑。
+
 ```
     private synchronized void initServlet(Servlet servlet)
             throws ServletException {
@@ -483,8 +521,10 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         }
     }
 ```
-这段代码很简单，就是调用servlet的init方法。
-具体的init方法实现在其父类`GenericServlet`中。
+
+这段代码很简单，就是调用 servlet 的 init 方法。
+具体的 init 方法实现在其父类`GenericServlet`中。
+
 ```
     @Override
     public void init(ServletConfig config) throws ServletException {
@@ -492,17 +532,21 @@ Tomcat的ApplicationContext里加入servlet。代码为:
         this.init();
     }
 ```
-这里的init方法在子类`HttpServletBean`中。
+
+这里的 init 方法在子类`HttpServletBean`中。
+
 ```
 		// Let subclasses do whatever initialization they like.
 		initServletBean();
 	}
 ```
+
 `initServletBean()`方法在子类`FrameworkServlet`中。
+
 ```
 @Override
 	protected final void initServletBean() throws ServletException {
-		
+
 		long startTime = System.currentTimeMillis();
 
 		try {
@@ -516,8 +560,10 @@ Tomcat的ApplicationContext里加入servlet。代码为:
 	}
 
 ```
+
 `initFrameworkServlet()`是留给子类实现的一个扩展接口，默认为空实现，主要的逻辑在`initWebApplicationContext()`中，该方法主要是初始化一些策略，如文件解析器，国际化解析器，主题解析器，处理器映射器，处理器适配器，异常处理器，视图解析器等。具体的实现在子类`DispatcherServlet`中。
 代码如下：
+
 ```
 	@Override
 	protected void onRefresh(ApplicationContext context) {
@@ -549,13 +595,16 @@ Tomcat的ApplicationContext里加入servlet。代码为:
 		initFlashMapManager(context);
 	}
 ```
+
 > 后面通过看具体的请求处理来看上面的处理器如何工作的。
 
-到此，servlet的init方法正式处理完成，就可以提供服务了。
+到此，servlet 的 init 方法正式处理完成，就可以提供服务了。
 
-#### servlet提供服务过程（service）
+#### servlet 提供服务过程（service）
+
 下面，看`service`如何处理。
 从前文中的代码中可以知道，在调用`service`之前，需要获取一个`ApplicationFilterChain`，先来看看`ApplicationFilterFactory`中`createFilterChain`里做了哪些事情。从类名中可以猜到，这里主要是添加一些`Filter`相关的信息。具体代码为：
+
 ```
 public static ApplicationFilterChain createFilterChain(ServletRequest request,
             Wrapper wrapper, Servlet servlet) {
@@ -639,17 +688,23 @@ public static ApplicationFilterChain createFilterChain(ServletRequest request,
         return filterChain;
     }
 ```
+
 其中比较重要的一行代码`FilterMap filterMaps[] = context.findFilterMaps();`，获取过滤器列表。
+
 ```
     @Override
     public FilterMap[] findFilterMaps() {
         return filterMaps.asArray();
     }
 ```
+
 这里`filterMaps`是在什么时候进行赋值的呢？此处又会回到`ServletContextInitializer`这个接口的`onStartup`方法里了。
 前文里提到过，在`createWebServer`时，有个方法引用`getSelfInitializer`。这里同样走到这段代码里。
-##### Filter相关的准备工作
-我们在通常在springboot里定义过滤器时，可以使用如下代码：
+
+##### Filter 相关的准备工作
+
+我们在通常在 springboot 里定义过滤器时，可以使用如下代码：
+
 ```
     @Bean
     public FilterRegistrationBean xxxFilter() {
@@ -661,10 +716,12 @@ public static ApplicationFilterChain createFilterChain(ServletRequest request,
 
     }
 ```
+
 看下`FilterRegistrationBean`的类图![FilterRegistrationBean](/images/FilterRegistrationBean.png)
 
-FilterRegistrationBean同样实现了ServletContextInitializer接口。
+FilterRegistrationBean 同样实现了 ServletContextInitializer 接口。
 同时，我们还可以进行如下方式定义过滤器。
+
 ```
 @Service
 public class TestFilter implements Filter {
@@ -686,8 +743,10 @@ public class TestFilter implements Filter {
     }
 }
 ```
+
 这种方式没有显式的定义成一个`FilterRegistrationBean`，在代码中事实上也封装成一个`FilterRegistrationBean`。接下来看具体的代码实现。
 首先看`ServletContextInitializer`的`onStartup`的调用处代码。
+
 ```
 	private void selfInitialize(ServletContext servletContext) throws ServletException {
 		prepareWebApplicationContext(servletContext);
@@ -698,12 +757,15 @@ public class TestFilter implements Filter {
 		}
 	}
 ```
-`getServletContextInitializerBeans()`里从bean工厂里获取`ServletContextInitializer`类型的bean，调用`onStartup`方法。
+
+`getServletContextInitializerBeans()`里从 bean 工厂里获取`ServletContextInitializer`类型的 bean，调用`onStartup`方法。
+
 ```
 	protected Collection<ServletContextInitializer> getServletContextInitializerBeans() {
 		return new ServletContextInitializerBeans(getBeanFactory());
 	}
 ```
+
 ```
 	public ServletContextInitializerBeans(ListableBeanFactory beanFactory,
 			Class<? extends ServletContextInitializer>... initializerTypes) {
@@ -721,7 +783,9 @@ public class TestFilter implements Filter {
 		logMappings(this.initializers);
 	}
 ```
-显式定义为ServletContextInitializer的bean的处理方法：
+
+显式定义为 ServletContextInitializer 的 bean 的处理方法：
+
 ```
 	private void addServletContextInitializerBeans(ListableBeanFactory beanFactory) {
 		for (Class<? extends ServletContextInitializer> initializerType : this.initializerTypes) {
@@ -732,6 +796,7 @@ public class TestFilter implements Filter {
 		}
 	}
 ```
+
 ```
 private void addServletContextInitializerBean(String beanName, ServletContextInitializer initializer,
 			ListableBeanFactory beanFactory) {
@@ -757,6 +822,7 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		}
 	}
 ```
+
 ```
 	private void addServletContextInitializerBean(Class<?> type, String beanName, ServletContextInitializer initializer,
 			ListableBeanFactory beanFactory, Object source) {
@@ -774,7 +840,8 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 	}
 ```
 
-未显式定义为ServletContextInitializer的bean
+未显式定义为 ServletContextInitializer 的 bean
+
 ```
 	protected void addAdaptableBeans(ListableBeanFactory beanFactory) {
 		MultipartConfigElement multipartConfig = getMultipartConfig(beanFactory);
@@ -786,6 +853,7 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		}
 	}
 ```
+
 ```
 	private <T, B extends T> void addAsRegistrationBean(ListableBeanFactory beanFactory, Class<T> type,
 			Class<B> beanType, RegistrationBeanAdapter<T> adapter) {
@@ -808,6 +876,7 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		}
 	}
 ```
+
 ```
 	private static class FilterRegistrationBeanAdapter implements RegistrationBeanAdapter<Filter> {
 
@@ -820,8 +889,10 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 
 	}
 ```
+
 代码比较简单，这里只做代码的罗列，不做详细说明。
 接下来看`FilterRegistrationBean`里`onStartup`方法的处理逻辑，该方法的实现在其父类`RegistrationBean`中。
+
 ```
 	@Override
 	public final void onStartup(ServletContext servletContext) throws ServletException {
@@ -833,7 +904,9 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		register(description, servletContext);
 	}
 ```
+
 `register`方法在`RegistrationBean`子类`DynamicRegistrationBean`中。
+
 ```
 	@Override
 	protected final void register(String description, ServletContext servletContext) {
@@ -845,7 +918,9 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		configure(registration);
 	}
 ```
+
 `addRegistration`在其子类`AbstractFilterRegistrationBean`中实现。
+
 ```
 	@Override
 	protected Dynamic addRegistration(String description, ServletContext servletContext) {
@@ -853,7 +928,9 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		return servletContext.addFilter(getOrDeduceName(filter), filter);
 	}
 ```
+
 `addFilter`代码走到`ApplicationContextFacade`中。
+
 ```
     @Override
     public FilterRegistration.Dynamic addFilter(String filterName,
@@ -867,7 +944,9 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
         }
     }
 ```
+
 最后走到`ApplicationContext`中。
+
 ```
  private FilterRegistration.Dynamic addFilter(String filterName,
             String filterClass, Filter filter) throws IllegalStateException {
@@ -891,9 +970,11 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
         return new ApplicationFilterRegistration(filterDef, context);
     }
 ```
-最后将FilterDef加入到`StandradContext`的`filterDefs`中。
-回过头来，看DynamicRegistrationBean中`register`的第二个主要调用的方法`configure()`
+
+最后将 FilterDef 加入到`StandradContext`的`filterDefs`中。
+回过头来，看 DynamicRegistrationBean 中`register`的第二个主要调用的方法`configure()`
 对于过滤器来说，实现方法在`AbstractFilterRegistrationBean`中。
+
 ```
 @Override
 	protected void configure(FilterRegistration.Dynamic registration) {
@@ -929,12 +1010,17 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
 		}
 	}
 ```
-`registration.addMappingForUrlPatterns(dispatcherTypes, this.matchAfter, DEFAULT_URL_MAPPINGS);`这里的方法将每个filter通过StandardContext的`addFilterMapBefore`方式，塞到filterMap中的arrays中。通过`findFilterMaps`就能得到所有的filter了。
-到此，Filter相关的准备工作完成。
-> ***需要补充上面流程的流程图***。
-##### 回到service
-回到前文的`ApplicationFilterChain`的获取上。`ApplicationFilterFactory`里通过`context.findFilterMaps();`获取所有的过滤器，放入filterChain中。
-`StandardWrapperValue`中代码继续往下走，调用了ApplicationFilterChain的`doFilter`方法。
+
+`registration.addMappingForUrlPatterns(dispatcherTypes, this.matchAfter, DEFAULT_URL_MAPPINGS);`这里的方法将每个 filter 通过 StandardContext 的`addFilterMapBefore`方式，塞到 filterMap 中的 arrays 中。通过`findFilterMaps`就能得到所有的 filter 了。
+到此，Filter 相关的准备工作完成。
+
+> **_需要补充上面流程的流程图_**。
+
+##### 回到 service
+
+回到前文的`ApplicationFilterChain`的获取上。`ApplicationFilterFactory`里通过`context.findFilterMaps();`获取所有的过滤器，放入 filterChain 中。
+`StandardWrapperValue`中代码继续往下走，调用了 ApplicationFilterChain 的`doFilter`方法。
+
 ```
  private void internalDoFilter(ServletRequest request,
                                   ServletResponse response)
@@ -954,7 +1040,7 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
                 } else {
                     filter.doFilter(request, response, this);
                 }
-            } 
+            }
             。。。。。。
             }
             return;
@@ -985,5 +1071,6 @@ private void addServletContextInitializerBean(String beanName, ServletContextIni
     }
 
 ```
-以上代码就进入到了servlet的另外一个生命周期了，提供service服务了。
-下篇文章，我们具体看下service接口里的逻辑.
+
+以上代码就进入到了 servlet 的另外一个生命周期了，提供 service 服务了。
+下篇文章，我们具体看下 service 接口里的逻辑.
